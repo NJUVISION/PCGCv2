@@ -1,4 +1,5 @@
 # Multiscale Point Cloud Geometry Compression
+Jianqiang Wang, Dandan Ding, Zhu Li, Zhan Ma.  **[[arXiv]](https://arxiv.org/abs/2011.03799)**
 
 ​	We apply an **end-to-end learning framework** to compress the 3D  point cloud geometry (PCG) efficiently. Leveraging the sparsity nature of point cloud, we introduce the **multiscale structure** to represent native PCG compactly, offering the **hierarchical reconstruction** capability via progressive learnt re-sampling. Under this framework, we devise the **sparse convolution-based autoencoder** for feature analysis and aggregation. At the bottleneck layer, geometric occupancy information is losslessly encoded with a very small percentage of bits consumption, and corresponding feature attributes are lossy compressed. 
 
