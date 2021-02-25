@@ -95,7 +95,7 @@ def partition_point_cloud(filedir, max_num=300000):
 # In[7]:
 
 
-def load_sp_tensor(filedir, voxel_size=1):
+def load_sp_tensor(filedir, voxel_size=1, device='cpu'):
     pcd=o3d.io.read_point_cloud(filedir)
 
     if voxel_size == 1:
@@ -103,7 +103,10 @@ def load_sp_tensor(filedir, voxel_size=1):
         #print(downpcd)
     else:
         # downpcd = pcd.voxel_down_sample(voxel_size= voxel_size)
-        downpcd = o3d.voxel_down_sample(pcd, voxel_size = voxel_size)
+        if o3d.__version__.split('.')[1] < '8': 
+            downpcd = o3d.voxel_down_sample(pcd, voxel_size = voxel_size)
+        else:
+            downpcd = pcd.voxel_down_sample(voxel_size = voxel_size)
         #o3d.draw_geometries([downpcd])
 
         # Quantization
@@ -120,10 +123,10 @@ def load_sp_tensor(filedir, voxel_size=1):
     # Sparse Quantize
     
     feats = torch.ones(points.shape[0]).unsqueeze(-1)
-    points, feats = ME.utils.sparse_quantize(coords=points, feats=feats, quantization_size=1)
+    points, feats = ME.utils.sparse_quantize(coordinates=points, features=feats, quantization_size=1)
     coords, feats = ME.utils.sparse_collate([points], [feats])
 
-    x = ME.SparseTensor(feats=feats, coords=coords, tensor_stride=1)
+    x = ME.SparseTensor(features=feats, coordinates=coords, tensor_stride=1, device=device)
     
     return x
 
@@ -139,7 +142,7 @@ def sort_sparse_tensor(coords, feats):
     ids = torch.argsort(coords_sum)
     coords_sum_sorted = coords_sum[ids]
 
-    coords_sorted = torch.stack([(-minimum) * torch.ones(len(coords_sum_sorted)),
+    coords_sorted = torch.stack([(-minimum) * torch.ones(len(coords_sum_sorted)).to(minimum.device),
                                  coords_sum_sorted % step, 
                                  (coords_sum_sorted // step) % step, 
                                  (coords_sum_sorted // step // step) % step], 1)
@@ -178,13 +181,13 @@ def sort_xyz(coords):
 
 
 def encode(filedir, pcc, prefix, voxel_size):
-    x = load_sp_tensor(filedir, voxel_size).to(device)
+    x = load_sp_tensor(filedir, voxel_size, device=device)
     # analysis transform
     with torch.no_grad():
         ys = pcc.encoder(x)
-    y = ME.SparseTensor(ys[0].F, coords=ys[0].C, tensor_stride=8).to(device)
+    y = ME.SparseTensor(ys[0].F, coordinates=ys[0].C, tensor_stride=8, device=device)
     # encode: y's coords 
-    y_coords = (y.decomposed_coordinates[0]//y.tensor_stride[0]).numpy().astype('int')
+    y_coords = (y.decomposed_coordinates[0]//y.tensor_stride[0]).cpu().numpy().astype('int')
     y_coords_name = prefix+'_coords.ply'
     write_ply_data(y_coords_name, y_coords)
 
@@ -197,7 +200,8 @@ def encode(filedir, pcc, prefix, voxel_size):
 
     y_sorted = ME.SparseTensor(feats_sorted, 
                               coords_sorted,
-                              tensor_stride=8).to(device)
+                              tensor_stride=8, 
+                              device=device)
     
     shape = y_sorted.F.shape
     strings, min_v, max_v = pcc.entropy_bottleneck.compress(y_sorted.F, device=device)
@@ -248,7 +252,8 @@ def decode(y_coords_binname, y_feats_binname, head_binname, pcc, rho, voxel_size
 
     y = ME.SparseTensor(y_feats, 
                         y_coords,
-                        tensor_stride=tensor_stride).to(device)
+                        tensor_stride=tensor_stride, 
+                        device=device)
 
     # synthesis transform
     with torch.no_grad():
@@ -257,7 +262,7 @@ def decode(y_coords_binname, y_feats_binname, head_binname, pcc, rho, voxel_size
                                                    rhos=[1.0, 1.0, rho], 
                                                    training=False)
     
-    return out.decomposed_coordinates[0]*voxel_size
+    return out.decomposed_coordinates[0].cpu().numpy()*voxel_size
 
 
 # ## partition
@@ -483,11 +488,30 @@ def eval(filedir, csv_root_dir, ckptdirs, voxel_sizes, rhos, res, max_num):
         out = partition_decode(coords_binname, feats_binname, head_binname, pcc, rho=rho, voxel_size=voxel_size)
         torch.cuda.synchronize()
         decode_time = round(time.time() - decode_start, 6)
-        
+
+        # metric
         metric_start = time.time()
         results = metrics(filedir, out, coords_binname, feats_binname, head_binname, all_binname, res)
         torch.cuda.synchronize()
         metric_time = round(time.time() - metric_start, 6)
+
+        # save dec files
+        prefix = os.path.split(filedir)[-1].split('.')[0]
+        # recname = prefix + '_rec' + '_R' + str(idx_ckpt) + '_bpp' + str(round(results["bpp"][0], 3)).split('.')[-1] + \
+        #                             '_mse' + str(round(results["mseF      (p2point)"][0], 4)).split('.')[-1] + '.ply'
+        recname = prefix + '_rec' + '_R' + str(idx_ckpt) + \
+            '_s' + str(round(voxel_size, 2)) + \
+            '_bpp' + str(round(results["bpp"][0], 3)) + \
+            '_mse' + str(round(results["mseF      (p2point)"][0], 4)) + '.ply'
+
+        dec_rootdir = './deocded'
+        if not os.path.exists(dec_rootdir):
+            os.makedirs(dec_rootdir)
+
+        rec_pcd = o3d.geometry.PointCloud()
+        rec_pcd.points = o3d.utility.Vector3dVector(out)
+        o3d.io.write_point_cloud(os.path.join(dec_rootdir, recname), rec_pcd, write_ascii=True)
+
 
         results["voxel size"] = voxel_size
         results["rho"] = rho
@@ -533,11 +557,11 @@ def eval(filedir, csv_root_dir, ckptdirs, voxel_sizes, rhos, res, max_num):
 def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--filedir", type=str, default='testdata/8iVFB/redandblack_vox10_1550_n.ply', help="filedir")
+    parser.add_argument("--filedir", type=str, default='testdata/8iVFB/redandblack_vox10_1550.ply', help="filedir")
     parser.add_argument("--ckptdir", type=str, default='./ckpts/c8_a10_32000.pth', help="ckptdir")
     parser.add_argument("--voxel_size", type=int, default=1, help="voxel_size")
     parser.add_argument("--res", type=int, default=1024, help="resolution")
-    parser.add_argument("--max_num", type=int, default=1e7, help="max number of points")
+    parser.add_argument("--max_num", type=int, default=2e6, help="max number of points")
     parser.add_argument("--rho", type=float, default=1, help="output_num/input_num")
     parser.add_argument("--csvrootdir", type=str, default='results/multiscalepcgc/d2/', help="csvrootdir")
     parser.add_argument("--test_all", default=False, action='store_true')
@@ -546,8 +570,9 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    print('='*100)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = 'cpu'
+    # device = 'cpu'
     print(device)
 
     from PCCModel import PCC
@@ -580,25 +605,25 @@ if __name__ == '__main__':
             './ckpts/c8_a10_32000.pth']
         voxel_sizes = [1, 1, 1, 1, 1, 1, 1]
 
-        # # 8i
+        # 8i
         # rhos = [1.4, 1.2, 1, 1, 1, 1, 1]
-        # # rhos = [1, 1, 1, 1, 1, 1, 1] # for D2
-        # for idx, filedir in enumerate(['testdata/8iVFB/longdress_vox10_1300_n.ply', 
-        #                             'testdata/8iVFB/redandblack_vox10_1550_n.ply',
-        #                             'testdata/8iVFB/loot_vox10_1200_n.ply',
-        #                             'testdata/8iVFB/soldier_vox10_0690_n.ply']):
-        #     eval(filedir, csv_root_dir, ckptdirs, voxel_sizes, rhos, 1024, max_num)      
-        #     os.system('rm *.ply *.bin')
+        rhos = [1, 1, 1, 1, 1, 1, 1] # for D2
+        for idx, filedir in enumerate(['testdata/8iVFB/longdress_vox10_1300.ply', 
+                                    'testdata/8iVFB/redandblack_vox10_1550.ply',
+                                    'testdata/8iVFB/loot_vox10_1200.ply',
+                                    'testdata/8iVFB/soldier_vox10_0690.ply']):
+            eval(filedir, csv_root_dir, ckptdirs, voxel_sizes, rhos, 1024, max_num)      
+            os.system('rm *.ply *.bin')
 
-        # # mvub
+        # mvub
         # rhos = [1.3, 1.2, 1, 1, 1, 1, 1]
-        # # rhos = [1, 1, 1, 1, 1, 1, 1] # for D2
-        # for idx, filedir in enumerate(['testdata/MVUB/andrew_vox9_frame0000.ply', 
-        #                             'testdata/MVUB/david_vox9_frame0000.ply',
-        #                             'testdata/MVUB/phil_vox9_frame0139.ply',
-        #                             'testdata/MVUB/sarah_vox9_frame0023.ply']):
-        #     eval(filedir, csv_root_dir, ckptdirs, voxel_sizes, rhos, 512, max_num)      
-        #     os.system('rm *.ply *.bin')
+        rhos = [1, 1, 1, 1, 1, 1, 1] # for D2
+        for idx, filedir in enumerate(['testdata/MVUB/andrew_vox9_frame0000.ply', 
+                                    'testdata/MVUB/david_vox9_frame0000.ply',
+                                    'testdata/MVUB/phil_vox9_frame0139.ply',
+                                    'testdata/MVUB/sarah_vox9_frame0023.ply']):
+            eval(filedir, csv_root_dir, ckptdirs, voxel_sizes, rhos, 512, max_num)      
+            os.system('rm *.ply *.bin')
 
         # owlii
         # rhos = [1.2, 1.1, 1, 1, 1, 1, 1]

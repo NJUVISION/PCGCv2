@@ -34,14 +34,14 @@ class Encoder(nn.Module):
             out_channels=ch[0],
             kernel_size=3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.down0 = ME.MinkowskiConvolution(
             in_channels=ch[0],
             out_channels=ch[1],
             kernel_size=2,
             stride=2,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.block0 = self.make_layer(
             self.block, block_layers, ch[1])        
@@ -51,14 +51,14 @@ class Encoder(nn.Module):
             out_channels=ch[1],
             kernel_size=3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.down1 = ME.MinkowskiConvolution(
             in_channels=ch[1],
             out_channels=ch[2],
             kernel_size=2,
             stride=2,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.block1 = self.make_layer(
             self.block, block_layers, ch[2])
@@ -68,14 +68,14 @@ class Encoder(nn.Module):
             out_channels=ch[2],
             kernel_size=3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.down2 = ME.MinkowskiConvolution(
             in_channels=ch[2],
             out_channels=ch[3],
             kernel_size=2,
             stride=2,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.block2 = self.make_layer(
             self.block, block_layers, ch[3])
@@ -85,7 +85,7 @@ class Encoder(nn.Module):
             out_channels=ch[4],
             kernel_size=3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
         self.relu = ME.MinkowskiReLU(inplace=True)
@@ -123,20 +123,19 @@ class Decoder(nn.Module):
         elif block == 'InceptionResNet':
             self.block = InceptionResNet
 
-        self.up0 = ME.MinkowskiConvolutionTranspose(
+        self.up0 = ME.MinkowskiGenerativeConvolutionTranspose(
             in_channels=ch[0],
             out_channels=ch[1],
             kernel_size= 2,
             stride=2,
-            has_bias=True,
-            generate_new_coords=True,
+            bias=True,
             dimension=3)
         self.conv0 = ME.MinkowskiConvolution(
             in_channels=ch[1],
             out_channels=ch[1],
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.block0 = self.make_layer(
             self.block, block_layers, ch[1])
@@ -146,23 +145,22 @@ class Decoder(nn.Module):
             out_channels=out_nchannel,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
-        self.up1 = ME.MinkowskiConvolutionTranspose(
+        self.up1 = ME.MinkowskiGenerativeConvolutionTranspose(
             in_channels=ch[1],
             out_channels=ch[2],
             kernel_size= 2,
             stride=2,
-            has_bias=True,
-            generate_new_coords=True,
+            bias=True,
             dimension=3)
         self.conv1 = ME.MinkowskiConvolution(
             in_channels=ch[2],
             out_channels=ch[2],
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.block1 = self.make_layer(
             self.block, block_layers, ch[2])
@@ -172,23 +170,22 @@ class Decoder(nn.Module):
             out_channels=out_nchannel,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
-        self.up2 = ME.MinkowskiConvolutionTranspose(
+        self.up2 = ME.MinkowskiGenerativeConvolutionTranspose(
             in_channels=ch[2],
             out_channels=ch[3],
             kernel_size= 2,
             stride=2,
-            has_bias=True,
-            generate_new_coords=True,
+            bias=True,
             dimension=3)
         self.conv2 = ME.MinkowskiConvolution(
             in_channels=ch[3],
             out_channels=ch[3],
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.block2 = self.make_layer(
             self.block, block_layers, ch[3])
@@ -198,7 +195,7 @@ class Decoder(nn.Module):
             out_channels=out_nchannel,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
         self.relu = ME.MinkowskiReLU(inplace=True)
@@ -251,7 +248,8 @@ class Decoder(nn.Module):
             in_sp_tensor_coords_1d = ravel_multi_index(target_sp_tensor.C, step)
 
             # test whether each element of a 1-D array is also present in a second array.
-            target = np.in1d(out_sp_tensor_coords_1d, in_sp_tensor_coords_1d)
+            target = np.in1d(out_sp_tensor_coords_1d.cpu().numpy(), 
+                            in_sp_tensor_coords_1d.cpu().numpy())
 
         return torch.Tensor(target).bool()
 
@@ -278,7 +276,8 @@ class Decoder(nn.Module):
         with torch.no_grad():
             keep = torch.zeros(len(out), dtype=torch.bool)
             #  get row indices per batch.
-            row_indices_per_batch = out.coords_man.get_row_indices_per_batch(out.coords_key)
+            # row_indices_per_batch = out.coords_man.get_row_indices_per_batch(out.coords_key)
+            row_indices_per_batch = out._batchwise_row_indices
 
             for row_indices, ori_coords_num in zip(row_indices_per_batch, coords_nums):
                 coords_num = min(len(row_indices), ori_coords_num*rho)# select top k points.
@@ -289,7 +288,7 @@ class Decoder(nn.Module):
 
 
     def forward(self, x, target_label, adaptive, rhos=[1.0, 1.0, 1.0], training=True):
-        if isinstance(target_label, ME.CoordsKey):
+        if isinstance(target_label, ME.CoordinateMapKey):
             target_format = 'key'
         elif isinstance(target_label, list):
             if isinstance(target_label[0], ME.SparseTensor):
@@ -343,8 +342,9 @@ class Decoder(nn.Module):
         if training:
             keep0 += target0
 
+
         # Remove voxels
-        out0_pruned = self.pruning(out0, keep0.cpu())
+        out0_pruned = self.pruning(out0, keep0.to(out0.device))
 
         # Decode 1.
         out1 = self.relu(self.conv1(self.relu(self.up1(out0_pruned))))
@@ -386,7 +386,7 @@ class Decoder(nn.Module):
             keep1 += target1
             
         # Remove voxels
-        out1_pruned = self.pruning(out1, keep1.cpu())
+        out1_pruned = self.pruning(out1, keep1.to(out1.device))
 
         # Decode 2.
         out2 = self.relu(self.conv2(self.relu(self.up2(out1_pruned))))
@@ -425,7 +425,7 @@ class Decoder(nn.Module):
         keeps.append(keep2)
         
         # Remove voxels
-        out2_pruned = self.pruning(out2_cls, keep2.cpu())
+        out2_pruned = self.pruning(out2_cls, keep2.to(out2_cls.device))
 
         return out2_pruned, out_cls, targets, keeps
 

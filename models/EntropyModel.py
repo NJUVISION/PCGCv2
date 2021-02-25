@@ -169,7 +169,7 @@ class EntropyBottleneck(nn.Module):
       shape = inputs.size()
       inputs = torch.reshape(inputs, (shape[0], 1, -1))
     """
-
+    
     # Evaluate densities.
     lower = self._logits_cumulative(inputs - 0.5)
     upper = self._logits_cumulative(inputs + 0.5)

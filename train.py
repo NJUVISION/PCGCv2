@@ -42,7 +42,7 @@ def parse_args():
   parser.add_argument("--model", default="PCCModel")
   parser.add_argument("--channels", type=int, default=8)
 
-  parser.add_argument("--dataset", default='/home/ubuntu/HardDisk1/color_training_datasets/training_dataset/')
+  parser.add_argument("--dataset", default='/home/ubuntu/HardDisk2/color_training_datasets/training_dataset/')
   parser.add_argument("--num_test", type=int, default=1024)
   parser.add_argument("--dataset_8i", default='testdata/8iVFB/')
 
@@ -97,7 +97,7 @@ def test(pcc, test_dataloader, logger, writer, writername, step, test_pc_error, 
   # loop per batch.
   for i in range(len(test_iter)):
     coords, feats = test_iter.next()
-    x = ME.SparseTensor(feats, coords=coords).to(device)
+    x = ME.SparseTensor(feats, coordinates=coords, device=device)
     
     # Forward.
     _, likelihood, out, out_cls, targets, keeps = pcc(x, 
@@ -262,7 +262,7 @@ def train(pcc, train_dataloader, test_dataloader, test_dataloader2, logger, writ
     coords, feats = train_iter.next()
     dataloader_time = time.time() - s# 
 
-    x = ME.SparseTensor(feats=feats, coords=coords).to(device)
+    x = ME.SparseTensor(features=feats, coordinates=coords, device=device)
 
     
     if x.__len__() >= 4e5:

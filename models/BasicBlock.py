@@ -21,7 +21,7 @@ class ResNet(nn.Module):
             out_channels=channels,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
         self.conv1 = ME.MinkowskiConvolution(
@@ -29,7 +29,7 @@ class ResNet(nn.Module):
             out_channels=channels,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         
         self.relu = ME.MinkowskiReLU(inplace=True)
@@ -55,14 +55,14 @@ class InceptionResNet(nn.Module):
             out_channels=channels//4,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.conv0_1 = ME.MinkowskiConvolution(
             in_channels=channels//4,
             out_channels=channels//2,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
         #path_1
@@ -71,21 +71,21 @@ class InceptionResNet(nn.Module):
             out_channels=channels//4,
             kernel_size= 1,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.conv1_1 = ME.MinkowskiConvolution(
             in_channels=channels//4,
             out_channels=channels//4,
             kernel_size= 3,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
         self.conv1_2 = ME.MinkowskiConvolution(
             in_channels=channels//4,
             out_channels=channels//2,
             kernel_size= 1,
             stride=1,
-            has_bias=True,
+            bias=True,
             dimension=3)
 
         self.relu = ME.MinkowskiReLU(inplace=True)
