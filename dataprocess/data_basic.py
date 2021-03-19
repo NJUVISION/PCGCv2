@@ -73,7 +73,7 @@ def loadply(filedir, color_format='rgb'):
   
   feats = feats.astype('float32')
 
-  coords, feats = ME.utils.sparse_quantize(coords=coords, feats=feats, quantization_size=1)
+  coords, feats = ME.utils.sparse_quantize(coords, features=feats, quantization_size=1)
 
   feats = feats.astype('float32')
 
