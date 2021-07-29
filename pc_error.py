@@ -39,7 +39,7 @@ def pc_error(infile1, infile2, res, normal=False, show=False):
                       "mse2      (p2plane)", "mse2,PSNR (p2plane)",
                       "mseF      (p2plane)", "mseF,PSNR (p2plane)"]
 
-    headers = headers1 + headers2 + headersF
+    headers = headers1 + headers2 + headersF + haders_p2plane
 
     command = str(rootdir+'/pc_error_d' + 
                           ' -a '+infile1+ 
@@ -69,45 +69,7 @@ def pc_error(infile1, infile2, res, normal=False, show=False):
                 results[key] = value
 
         c=subp.stdout.readline() 
-    print('===== measure PCC quality using `pc_error` version 0.13.4', round(time.time() - start, 4))
+    # print('===== measure PCC quality using `pc_error` version 0.13.4', round(time.time() - start, 4))
 
     return pd.DataFrame([results])
 
-def avs_pcc_pc_evalue(infile1, infile2, res, show=False):
-    # Evaluate using AVS PCC PC evaluation tool.
-    # D1 mse, D1 hausdorff.
-    
-    # 1. Take original point cloud as reference:
-    headers_1 = ["D1_MSE_1", "D1_PSNR_1", 
-               "D1_Hausdorff_1", "D1_HausdorffPSNR_1"]
-    # 2. Take reconstruct point cloud as reference:
-    headers_2 = ["D1_MSE_2", "D1_PSNR_2", 
-               "D1_Hausdorff_2", "D1_HausdorffPSNR_2"]
-    # 3. Symmetric result:
-    headers_f = ["D1_MSE_F", "D1_PSNR_F", 
-               "D1_Hausdorff_F", "D1_HausdorffPSNR_F"]
-    headers = headers_1 + headers_2 + headers_f
-    results = {}
-    
-    start = time.time()
-    subp=subprocess.Popen(rootdir+'/avs-pcc-pc_evalue '+ 
-                          ' -f1 '+infile1+ 
-                          ' -f2 '+infile2+ 
-                          ' -pk '+str(res-1), 
-                          shell=True, stdout=subprocess.PIPE)
-
-    c=subp.stdout.readline()
-    while c:
-        line = c.decode(encoding='utf-8')# python3.
-        if show:
-            print(line)
-
-        for _, key in enumerate(headers):
-            if line.find(key) != -1:
-                value = number_in_line(line)
-                results[key] = value
-
-        c=subp.stdout.readline() 
-    print('===== measure PCC quality using `avs-pcc-pc_evalue` v0.1', round(time.time() - start, 4))
-
-    return pd.DataFrame([results])

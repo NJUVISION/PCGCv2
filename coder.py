@@ -91,7 +91,7 @@ class Coder():
         return y
 
     @torch.no_grad()
-    def decode(self, postfix=''):
+    def decode(self, rho=1, postfix=''):
         # decode coords
         y_C = self.coordinate_coder.decode(postfix=postfix)
         y_C = torch.cat((torch.zeros((len(y_C),1)).int(), torch.tensor(y_C).int()), dim=-1)
@@ -104,6 +104,7 @@ class Coder():
         # decode label
         with open(self.filename+postfix+'_num_points.bin', 'rb') as fin:
             num_points = np.frombuffer(fin.read(4*3), dtype=np.int32).tolist()
+            num_points[-1] = int(rho * num_points[-1])# update
             num_points = [[num] for num in num_points]
         # decode
         _, out = self.model.decoder(y, nums_list=num_points, ground_truth_list=[None]*3, training=False)
@@ -116,12 +117,14 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--ckptdir", default='ckpts/r3_0.10bpp.pth')
     parser.add_argument("--filedir", default='../../../testdata/8iVFB/longdress_vox10_1300.ply')
+    parser.add_argument("--rho", type=float, default=1, help='the ratio of the number of output points to the number of input points')
+    parser.add_argument("--res", type=int, default=1024, help='resolution')
     args = parser.parse_args()
     filedir = args.filedir
 
     # load data
     start_time = time.time()
-    input_data = load_sparse_tensor(filedir, device)
+    x = load_sparse_tensor(filedir, device)
     print('Loading Time:\t', round(time.time() - start_time, 4), 's')
 
     outdir = './output'
@@ -129,16 +132,14 @@ if __name__ == '__main__':
     filename = os.path.split(filedir)[-1].split('.')[0]
     filename = os.path.join(outdir, filename)
     print(filename)
-    x = sort_spare_tensor(input_data)
 
     # model
     print('='*10, 'Test', '='*10)
     model = PCCModel().to(device)
-    if os.path.exists(args.ckptdir):
-        ckpt = torch.load(args.ckptdir)
-        model.load_state_dict(ckpt['model'])
-        print('load from ', args.ckptdir)
-    else: print('load failed!')
+    assert os.path.exists(args.ckptdir)
+    ckpt = torch.load(args.ckptdir)
+    model.load_state_dict(ckpt['model'])
+    print('load checkpoint from \t', args.ckptdir)
 
     # coder
     coder = Coder(model=model, filename=filename)
@@ -146,23 +147,27 @@ if __name__ == '__main__':
     # encode
     start_time = time.time()
     _ = coder.encode(x)
-    print('Enc Time:', round(time.time() - start_time, 3), 's')
+    print('Enc Time:\t', round(time.time() - start_time, 3), 's')
 
     # decode
     start_time = time.time()
-    x_dec = coder.decode()
-    print('Dec Time:', round(time.time() - start_time, 3), 's')
+    x_dec = coder.decode(rho=args.rho)
+    print('Dec Time:\t', round(time.time() - start_time, 3), 's')
 
     # bitrate
     bits = np.array([os.path.getsize(filename + postfix)*8 \
                             for postfix in ['_C.bin', '_F.bin', '_H.bin', '_num_points.bin']])
-    bpp = (bits/len(x)).round(3)
-    print(bits, 'bits', '\t', bpp, 'bpp')
-    print(sum(bits), 'bits', '\t',  sum(bpp).round(3), 'bpp')
+    bpps = (bits/len(x)).round(3)
+    print('bits:\t', bits, '\nbpps:\t', bpps)
+    print('bits:\t', sum(bits), '\nbpps:\t',  sum(bpps).round(3))
 
     # distortion
-    write_ply_ascii_geo(filename+'.ply', x.C.detach().cpu().numpy()[:,1:])
+    start_time = time.time()
     write_ply_ascii_geo(filename+'_dec.ply', x_dec.C.detach().cpu().numpy()[:,1:])
-    pc_error_metrics = pc_error(filename+'.ply', filename+'_dec.ply', res=1024, show=False)
-    print('pc_error_metrics:', pc_error_metrics)
-    print('D1 PSNR', pc_error_metrics["mseF,PSNR (p2point)"][0])
+    print('Write PC Time:\t', round(time.time() - start_time, 3), 's')
+
+    start_time = time.time()
+    pc_error_metrics = pc_error(args.filedir, filename+'_dec.ply', res=args.res, show=False)
+    print('PC Error Metric Time:\t', round(time.time() - start_time, 3), 's')
+    # print('pc_error_metrics:', pc_error_metrics)
+    print('D1 PSNR:\t', pc_error_metrics["mseF,PSNR (p2point)"][0])

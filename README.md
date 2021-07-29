@@ -19,22 +19,26 @@
 We recommend you to follow https://github.com/NVIDIA/MinkowskiEngine to setup the environment for sparse convolution. 
 
 - Pretrained Models: https://box.nju.edu.cn/f/46d9206c6565471fb256/
-- Results: https://box.nju.edu.cn/f/f2757a55e5e94440b2a7/
+- Results (old version): https://box.nju.edu.cn/f/f2757a55e5e94440b2a7/
 - Testdata: https://box.nju.edu.cn/f/e7a4578decf24cfa8e09/
 - Training Dataset: http://yun.nju.edu.cn/f/7c81b0e501/
 
 ## Usage
+
+### Testing
+Please download the pretrained models mentioned above first.
+```shell
+sudo chmod 777 tmc3 pc_error_d
+python coder.py --filedir='longdress_vox10_1300.ply' --ckptdir='ckpts/r3_0.10bpp.pth'
+python test.py --filedir='longdress_vox10_1300.ply' 
+```
+The testing rusults of 8iVFB can be found in `./results`
 
 ### Training
 ```shell
  python train.py --dataset='training_dataset_rootdir'
 ```
 
-### Testing
-```shell
-sudo chmod 777 tmc3 pc_error_d
-python coder.py --ckptdir='ckpts/r3_0.10bpp.pth' --filedir='longdress_vox10_1300.ply'
-```
 
 ## Authors
 These files are provided by Nanjing University  [Vision Lab](https://vision.nju.edu.cn/). And thanks for the help from Prof. Dandan Ding from Hangzhou Normal University and Prof. Zhu Li from University of Missouri at Kansas. Please contact us (mazhan@nju.edu.cn and wangjq@smail.nju.edu.cn) if you have any questions.
