@@ -15,6 +15,7 @@
 - pytorch1.7 or 1.8
 - MinkowskiEngine 0.5 or higher (for sparse convolution)
 - torchac 0.9.3 (for arithmetic coding) https://github.com/fab-jul/torchac
+- tmc3 v12 (for lossless compression of downsampled point cloud coordinates) https://github.com/MPEGGroup/mpeg-pcc-tmc13
 
 We recommend you to follow https://github.com/NVIDIA/MinkowskiEngine to setup the environment for sparse convolution. 
 
@@ -26,7 +27,7 @@ We recommend you to follow https://github.com/NVIDIA/MinkowskiEngine to setup th
 ## Usage
 
 ### Testing
-Please download the pretrained models mentioned above first.
+Please download the pretrained models and install tmc3 mentioned above first.
 ```shell
 sudo chmod 777 tmc3 pc_error_d
 python coder.py --filedir='longdress_vox10_1300.ply' --ckptdir='ckpts/r3_0.10bpp.pth'

@@ -4,18 +4,18 @@ import subprocess
 rootdir = os.path.split(__file__)[0]
 
 def gpcc_encode(filedir, bin_dir, show=False):
-    """Compress point cloud losslessly using MPEG G-PCCv6. 
+    """Compress point cloud losslessly using MPEG G-PCCv12. 
     You can download and install TMC13 from 
-    http://mpegx.int-evry.fr/software/MPEG/PCC/TM/mpeg-pcc-tmc13
+    https://github.com/MPEGGroup/mpeg-pcc-tmc13
     """
     subp=subprocess.Popen(rootdir+'/tmc3'+ 
                             ' --mode=0' + 
                             ' --positionQuantizationScale=1' + 
-                            ' --trisoup_node_size_log2=0' + 
-                            ' --ctxOccupancyReductionFactor=3' + 
+                            ' --trisoupNodeSizeLog2=0' + 
                             ' --neighbourAvailBoundaryLog2=8' + 
                             ' --intra_pred_max_node_size_log2=6' + 
                             ' --inferredDirectCodingMode=0' + 
+                            ' --maxNumQtBtBeforeOt=4' +
                             ' --uncompressedDataPath='+filedir + 
                             ' --compressedStreamPath='+bin_dir, 
                             shell=True, stdout=subprocess.PIPE)
