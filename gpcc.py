@@ -30,7 +30,9 @@ def gpcc_decode(bin_dir, rec_dir, show=False):
     subp=subprocess.Popen(rootdir+'/tmc3'+ 
                             ' --mode=1'+ 
                             ' --compressedStreamPath='+bin_dir+ 
-                            ' --reconstructedDataPath='+rec_dir, 
+                            ' --reconstructedDataPath='+rec_dir+
+                            ' --outputBinaryPly=0'
+                          ,
                             shell=True, stdout=subprocess.PIPE)
     c=subp.stdout.readline()
     while c:
