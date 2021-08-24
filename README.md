@@ -30,8 +30,10 @@ We recommend you to follow https://github.com/NVIDIA/MinkowskiEngine to setup th
 Please download the pretrained models and install tmc3 mentioned above first.
 ```shell
 sudo chmod 777 tmc3 pc_error_d
-python coder.py --filedir='longdress_vox10_1300.ply' --ckptdir='ckpts/r3_0.10bpp.pth'
-python test.py --filedir='longdress_vox10_1300.ply' 
+python coder.py --filedir='longdress_vox10_1300.ply' --ckptdir='ckpts/r3_0.10bpp.pth' --scaling_factor=1.0 --rho=1.0 --res=1024
+python test.py --filedir='longdress_vox10_1300.ply' --scaling_factor=1.0 --rho=1.0 --res=1024
+python test.py --filedir='dancer_vox11_00000001.ply'--scaling_factor=1.0 --rho=1.0 --res=2048
+python test.py --filedir='Staue_Klimt_vox12.ply' --scaling_factor=0.375 --rho=4.0 --res=4096
 ```
 The testing rusults of 8iVFB can be found in `./results`
 
