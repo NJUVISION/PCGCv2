@@ -4,13 +4,13 @@ import os
 from pcc_model import PCCModel
 from coder import Coder
 import time
-from data_utils import load_sparse_tensor, sort_spare_tensor
+from data_utils import load_sparse_tensor, sort_spare_tensor, scale_sparse_tensor
 from data_utils import write_ply_ascii_geo, read_ply_ascii_geo
 from pc_error import pc_error
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def test(filedir, ckptdir_list, outdir, resultdir, res=1024):
+def test(filedir, ckptdir_list, outdir, resultdir, scaling_factor=1.0, rho=1.0, res=1024):
     # load data
     start_time = time.time()
     x = load_sparse_tensor(filedir, device)
@@ -37,21 +37,27 @@ def test(filedir, ckptdir_list, outdir, resultdir, res=1024):
         # postfix: rate index
         postfix_idx = '_r'+str(idx+1)
 
+        # down-scale
+        if scaling_factor!=1: 
+            x_in = scale_sparse_tensor(x, factor=scaling_factor)
+        else: 
+            x_in = x
+
         # encode
         start_time = time.time()
-        _ = coder.encode(x, postfix=postfix_idx)
+        _ = coder.encode(x_in, postfix=postfix_idx)
         print('Enc Time:\t', round(time.time() - start_time, 3), 's')
         time_enc = round(time.time() - start_time, 3)
 
         # decode
         start_time = time.time()
-        # if idx == 0: rho=1.4
-        # elif idx == 1: rho=1.2
-        # else: rho= 1
-        rho = 1
         x_dec = coder.decode(postfix=postfix_idx, rho=rho)
         print('Dec Time:\t', round(time.time() - start_time, 3), 's')
         time_dec = round(time.time() - start_time, 3)
+
+        # up-scale
+        if scaling_factor!=1: 
+            x_dec = scale_sparse_tensor(x_dec, factor=1.0/scaling_factor)
 
         # bitrate
         bits = np.array([os.path.getsize(filename + postfix_idx + postfix)*8 \
@@ -100,7 +106,9 @@ if __name__ == '__main__':
     parser.add_argument("--filedir", default='../../../testdata/8iVFB/longdress_vox10_1300.ply')
     parser.add_argument("--outdir", default='./output')
     parser.add_argument("--resultdir", default='./results')
+    parser.add_argument("--scaling_factor", type=float, default=1.0, help='scaling_factor')
     parser.add_argument("--res", type=int, default=1024, help='resolution')
+    parser.add_argument("--rho", type=float, default=1.0, help='the ratio of the number of output points to the number of input points')
     args = parser.parse_args()
 
     if not os.path.exists(args.outdir): os.makedirs(args.outdir)
@@ -110,20 +118,20 @@ if __name__ == '__main__':
                     './ckpts/r5_0.25bpp.pth', './ckpts/r6_0.3bpp.pth', 
                     './ckpts/r7_0.4bpp.pth']
 
-    all_results = test(args.filedir, ckptdir_list, args.outdir, args.resultdir, res=args.res)
+    all_results = test(args.filedir, ckptdir_list, args.outdir, args.resultdir, scaling_factor=args.scaling_factor, rho=args.rho, res=args.res)
 
-    # # plot RD-curve
-    # import matplotlib.pyplot as plt
-    # fig, ax = plt.subplots(figsize=(7, 4))
-    # plt.plot(np.array(all_results["bpp"][:]), np.array(all_results["mseF,PSNR (p2point)"][:]), 
-    #         label="D1", marker='x', color='red')
-    # plt.plot(np.array(all_results["bpp"][:]), np.array(all_results["mseF,PSNR (p2plane)"][:]), 
-    #         label="D2", marker='x', color='blue')
-    # filename = os.path.split(args.filedir)[-1][:-4]
-    # plt.title(filename)
-    # plt.xlabel('bpp')
-    # plt.ylabel('PSNR')
-    # plt.grid(ls='-.')
-    # plt.legend(loc='lower right')
-    # fig.savefig(os.path.join(args.resultdir, filename+'.jpg'))
+    # plot RD-curve
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(7, 4))
+    plt.plot(np.array(all_results["bpp"][:]), np.array(all_results["mseF,PSNR (p2point)"][:]), 
+            label="D1", marker='x', color='red')
+    plt.plot(np.array(all_results["bpp"][:]), np.array(all_results["mseF,PSNR (p2plane)"][:]), 
+            label="D2", marker='x', color='blue')
+    filename = os.path.split(args.filedir)[-1][:-4]
+    plt.title(filename)
+    plt.xlabel('bpp')
+    plt.ylabel('PSNR')
+    plt.grid(ls='-.')
+    plt.legend(loc='lower right')
+    fig.savefig(os.path.join(args.resultdir, filename+'.jpg'))
 
