@@ -34,6 +34,7 @@ python coder.py --filedir='longdress_vox10_1300.ply' --ckptdir='ckpts/r3_0.10bpp
 python test.py --filedir='longdress_vox10_1300.ply' --scaling_factor=1.0 --rho=1.0 --res=1024
 python test.py --filedir='dancer_vox11_00000001.ply'--scaling_factor=1.0 --rho=1.0 --res=2048
 python test.py --filedir='Staue_Klimt_vox12.ply' --scaling_factor=0.375 --rho=4.0 --res=4096
+python test.py --filedir='House_without_roof_00057_vox12.ply' --scaling_factor=0.375 --rho=1.0 --res=4096
 ```
 The testing rusults of 8iVFB can be found in `./results`
 
