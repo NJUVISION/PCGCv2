@@ -4,7 +4,7 @@ import torch
 import MinkowskiEngine as ME
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-from data_utils import array2vector, istopk, sort_spare_tensor, load_sparse_tensor
+from data_utils import array2vector, istopk, sort_spare_tensor, load_sparse_tensor, scale_sparse_tensor
 from data_utils import write_ply_ascii_geo, read_ply_ascii_geo
 
 from gpcc import gpcc_encode, gpcc_decode
@@ -117,7 +117,8 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--ckptdir", default='ckpts/r3_0.10bpp.pth')
     parser.add_argument("--filedir", default='../../../testdata/8iVFB/longdress_vox10_1300.ply')
-    parser.add_argument("--rho", type=float, default=1, help='the ratio of the number of output points to the number of input points')
+    parser.add_argument("--scaling_factor", type=float, default=1.0, help='scaling_factor')
+    parser.add_argument("--rho", type=float, default=1.0, help='the ratio of the number of output points to the number of input points')
     parser.add_argument("--res", type=int, default=1024, help='resolution')
     args = parser.parse_args()
     filedir = args.filedir
@@ -144,15 +145,25 @@ if __name__ == '__main__':
     # coder
     coder = Coder(model=model, filename=filename)
 
+    # down-scale
+    if args.scaling_factor!=1: 
+        x_in = scale_sparse_tensor(x, factor=args.scaling_factor)
+    else: 
+        x_in = x
+
     # encode
     start_time = time.time()
-    _ = coder.encode(x)
+    _ = coder.encode(x_in)
     print('Enc Time:\t', round(time.time() - start_time, 3), 's')
 
     # decode
     start_time = time.time()
     x_dec = coder.decode(rho=args.rho)
     print('Dec Time:\t', round(time.time() - start_time, 3), 's')
+
+    # up-scale
+    if args.scaling_factor!=1: 
+        x_dec = scale_sparse_tensor(x_dec, factor=1.0/args.scaling_factor)
 
     # bitrate
     bits = np.array([os.path.getsize(filename + postfix)*8 \
