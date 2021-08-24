@@ -108,3 +108,11 @@ def load_sparse_tensor(filedir, device):
     x = ME.SparseTensor(features=feats, coordinates=coords, tensor_stride=1, device=device)
     
     return x
+
+def scale_sparse_tensor(x, factor):
+    coords = (x.C[:,1:]*factor).round().int()
+    feats = torch.ones((len(coords),1)).float()
+    coords, feats = ME.utils.sparse_collate([coords], [feats])
+    x = ME.SparseTensor(features=feats, coordinates=coords, tensor_stride=1, device=x.device)
+    
+    return x
