@@ -22,9 +22,9 @@
 
 We recommend you to follow https://github.com/NVIDIA/MinkowskiEngine to setup the environment for sparse convolution. 
 
-- Pretrained Models: https://box.nju.edu.cn/f/46d9206c6565471fb256/
+- Pretrained Models: https://box.nju.edu.cn/f/f44bb7ba98b149f898fb/
 - Results (old version): https://box.nju.edu.cn/f/f2757a55e5e94440b2a7/
-- Testdata: https://box.nju.edu.cn/f/e7a4578decf24cfa8e09/
+- Testdata: https://box.nju.edu.cn/f/a9e128f906ad4a738a3c/
 - Training Dataset: https://box.nju.edu.cn/f/8a1fb24ce6d846fca722/
 
 ## Usage
