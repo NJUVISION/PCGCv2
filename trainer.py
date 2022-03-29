@@ -120,6 +120,7 @@ class Trainer():
             self.optimizer.zero_grad()
             # data
             x = ME.SparseTensor(features=feats.float(), coordinates=coords, device=device)
+            # if x.shape[0] > 6e5: continue
             # forward
             out_set = self.model(x, training=True)
             # loss    
