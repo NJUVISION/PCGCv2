@@ -5,7 +5,7 @@
 ## News
 
 - 2021.11.23 We proposed a better and unified PCGC framework based on PCGCv2, named **SparsePCGC**. It can support both **lossless** and lossy compression, as well as dense point clouds (e.g., 8iVFB) and sparse **LiDAR** point clouds (e.g., Ford). Here is the links: [paper](https://arxiv.org/abs/2111.10633) [code](https://github.com/NJUVISION/SparsePCGC)
-- 2021.7.28 We have simplified the code, and use torchac to replace tensorflow-compression for arithmetic coding in the updated version. And the old version can be found [here](https://box.nju.edu.cn/f/60f21e96bdbe4e4d8208/).
+- 2021.7.28 We have simplified the code, and use torchac to replace tensorflow-compression for arithmetic coding in the updated version.
 - 2021.2.25 We have updated MinkowskiEngine to v0.5. The bug on GPU is fixed. And the encoding and decoding runtime is reduced.
 - 2021.1.1 Our paper has been accepted by **DCC2021**! [[paper](https://arxiv.org/abs/2011.03799)]  [[presentation](https://sigport.org/documents/multiscale-point-cloud-geometry-compression)]
 
@@ -22,10 +22,9 @@
 
 We recommend you to follow https://github.com/NVIDIA/MinkowskiEngine to setup the environment for sparse convolution. 
 
-- Pretrained Models: https://box.nju.edu.cn/f/f44bb7ba98b149f898fb/
-- Results (old version): https://box.nju.edu.cn/f/f2757a55e5e94440b2a7/
-- Testdata: https://box.nju.edu.cn/f/a9e128f906ad4a738a3c/
-- Training Dataset: https://box.nju.edu.cn/f/8a1fb24ce6d846fca722/
+- Pretrained Models: https://box.nju.edu.cn/f/b2bc67b7baab404ea68b/
+- Testdata: https://box.nju.edu.cn/f/30b96fc6332646c5980a/
+- Training Dataset: https://box.nju.edu.cn/f/1ff01798d4fc47908ac8/
 
 ## Usage
 
